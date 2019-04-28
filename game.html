@@ -7,136 +7,37 @@
 			border: 1px black solid;
 		}
 	</style>
+	<script src='game.js'></script>
+	<script src='paddle.js'></script>
+	<script src='ball.js'></script>
+	<script src='block.js'></script>
+	<script src='utils.js'></script>
+	<script src='level.js'></script>
+
 </head>
 <body>
 	<canvas id="id-canvas" width="400" height="300"></canvas>
-
+	<h3>使用说明</h3>
+	<ul>
+		<li>F 发射小球</li>
+		<li>P 暂停</li>
+		<li>A 左移动挡板，B 右移挡板</li>
+		<li>数字 1，2，3 关卡选择</li>
+	</ul>
 <script>
-	var log = console.log.bind(console)
-
-	// 载入图片
-	var imageFromPath = function(path){
-		var img = new Image()
-		img.src = path
-		return img
+	var loadLevel = function(n) {
+		var blocks = []
+		n = n - 1
+		var level = levels[n]
+		// mark 这个 forloop 感觉会出错
+		for(var i = 0; i < level.length; i++) {
+			var p = level[i]
+			var b = Block(p)
+			blocks.push(b)
+		}
+		return blocks
+		// 返回的时 block 对象
 	}
-
-	var Paddle = function(){
-		var image = imageFromPath('img/paddle.png')
-		var o = {
-			image: image,
-			x: 100,
-			y: 200,
-			speed: 20,
-		}
-		o.moveLeft = function() {
-			o.x -= o.speed
-		}
-		o.moveRight = function() {
-			o.x += o.speed
-		}
-		o.collide = function(ball) {
-			// 判断两个矩形是否相交
-			if (ball.y + ball.image.height > o.y) {
-				if (ball.x > o.x && ball.x < o.x + o.image.width)
-					log('相撞')
-					return true
-			} else {
-				log('false')
-				return false
-			}
-			
-
-		}
-		return o
-	}
-
-
-	var Ball = function(){
-		// 注意一下定义类的方法，函数式编程
-		var image = imageFromPath('img/ball.png')
-		var o = {
-			image: image,
-			x: 100,
-			y: 100,
-			speedX: 15,
-			speedY: 15,
-			fired: false,
-			
-		}
-		// 这种定义方法的方式,就不用把映射关系写在字典里面了，否则就会报错
-		o.fire = function() {
-			o.fired = true
-		}
-		o.move = function() {
-			if (o.fired) {
-				// move 速度的分解与合成，x, y 方向上各有一个速度，表象出来的感觉就式斜的
-				if (o.x < 0 || o.x > 400) {
-					o.speedX *= -1
-				}
-				if (o.y< 0 || o.y > 300) {
-					o.speedY *= -1
-				}
-				o.x += o.speedX
-				o.y += o.speedY
-			}
-		}
-		return o
-	}
-
-
-	var Game = function(){
-		var g = {
-			actions: {},
-			keydowns: {},
-		}
-		var canvas = document.querySelector('#id-canvas')
-		var context = canvas.getContext('2d')
-		g.canvas = canvas
-		g.context = context
-
-		// draw
-		g.drawImage = function(Image) {
-			g.context.drawImage(Image.image, Image.x, Image.y)
-		}
-
-		// events
-		window.addEventListener('keydown', function(event) {
-			g.keydowns[event.key] = true
-		})
-
-		window.addEventListener('keyup', function(event) {
-			g.keydowns[event.key] = false
-		})
-		// 
-		g.registerAction = function(key, callback) {
-			g.actions[key] = callback
-		}
-
-		// timer --> 这是一个函数，当 Game 被创建的时候，事件开始监听，如过发生就向后 执行
-		setInterval(function() {
-			// --> 这里有两个函数是使用的时候需要注册的， game.update game.draw
-			// events
-			var actions = Object.keys(g.actions)
-			for (var i = 0; i < actions.length; i++) {
-				var key = actions[i]
-				if(g.keydowns[key]) {
-					g.actions[key]()
-				}
-			}
-			// update
-			g.update()
-			// clear
-			context.clearRect(0, 0, canvas.width, canvas.height)
-			// draw
-			g.draw()
-
-
-		}, 1000/30)
-		return g
-	}
-
-
 
 	var __main = function(){
 		
@@ -144,8 +45,19 @@
 
 		var paddle = Paddle()
 		var ball = Ball()
-		
 
+		// 搞许多个砖块
+		var blocks = loadLevel(1)
+		// var blocks = []
+		// for(var i = 0; i < 3; i++) {
+		// 	var b = Block()
+		// 	b.x = i * 150
+		// 	b.y = 50
+		// 	blocks.push(b)
+		// }
+	
+		
+		var pause = false
 		// 注册两个事件
 		game.registerAction('a', function() {
 			paddle.moveLeft()
@@ -160,19 +72,51 @@
 			ball.move()
 		})
 
+		window.addEventListener('keydown', function(event) {
+			if (event.key == 'p') {
+				pause = !pause
+			} else if (event.key == '1') {
+				blocks = loadLevel(1)
+			} else if (event.key == '2')
+				blocks = loadLevel(2)
+		})
+
 		// 使得运动能够持续进行, 因为注册的 callback 函数，在按键松开的时候 false 了
 		game.update = function(){
+			// 暂停用的 直接函数结束
+			if (pause) {
+				return 
+			}
+
 			ball.move()
 			// 判断是否相撞--> 判断连个矩形是否相交
 			if (paddle.collide(ball)) {
-				ball.speedY *= -1
-
+				// ball.speedY *= -1
+				ball.rebound()
 			}
+			// 判断 blocks 和 ball 是否相撞
+			for(var i = 0; i < blocks.length; i++) {
+				var block = blocks[i]
+				if (block.collide(ball)) {
+				log('block and ball 相撞')
+				block.kill()
+				ball.rebound()
+				}
+			}
+			
 		}
 
 		game.draw = function() {
 			game.drawImage(paddle)
 			game.drawImage(ball)
+			// draw block
+			
+			for(var i = 0; i < blocks.length; i++) {
+				var block = blocks[i]
+				if (block.alive) {
+					game.drawImage(block)
+				}
+			}
 
 		}
 
