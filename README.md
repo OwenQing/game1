@@ -17,3 +17,4 @@
 	        paddle.png
 
 ### 思考如何去增加，关卡
+![](http://ww1.sinaimg.cn/large/005Hya2agy1g2rv1fiy3xj30ec0ghweo.jpg)
